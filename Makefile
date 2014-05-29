@@ -10,7 +10,9 @@ TARGETS += opc-server
 LEDSCAPE_OBJS = ledscape.o pru.o util.o lib/cesanta/frozen.o lib/cesanta/mongoose.o
 LEDSCAPE_LIB := libledscape.a
 
-all: $(TARGETS) dmx_0.bin ws2801_0.bin ws2801_1.bin ws281x_0.bin ws281x_1.bin
+all: $(LEDSCAPE_LIB) \
+	$(TARGETS) chuck-test \
+	dmx_0.bin ws2801_0.bin ws2801_1.bin ws281x_0.bin ws281x_1.bin
 
 
 ifeq ($(shell uname -m),armv7l)
@@ -48,7 +50,7 @@ LDLIBS += \
 	-lpthread \
 
 COMPILE.o = $(CROSS_COMPILE)gcc $(CFLAGS) -c -o $@ $<
-COMPILE.a = $(CROSS_COMPILE)gcc -c -o $@ $<
+COMPILE.a = ar cr $@
 COMPILE.link = $(CROSS_COMPILE)gcc $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 
@@ -78,7 +80,7 @@ PASM := $(PASM_DIR)/pasm
 	$(PASM) -V3 -b $<.i $(basename $@)
 	$(RM) $<.i
 
-%.o: %.c
+.o:.c
 	$(COMPILE.o)
 
 $(foreach O,$(TARGETS),$(eval $O: $O.o $(LEDSCAPE_OBJS) $(APP_LOADER_LIB)))
@@ -130,3 +132,12 @@ $(PASM):
 
 # Include all of the generated dependency files
 -include .*.o.d
+
+$(LEDSCAPE_LIB): $(LEDSCAPE_OBJS)
+	$(COMPILE.a) $(LEDSCAPE_OBJS)
+
+chuck-test.o: chuck-test.c
+	g++ -c $< -I/usr/bonelib/include
+
+chuck-test: chuck-test.o libledscape.a
+	g++ -o $@ chuck-test.o -lledscape -L. -lbone -L/usr/bonelib/lib $(LDLIBS)
